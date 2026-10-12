@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Conv2pdf;
 
 /**
- * PHP client for the conv2pdf API — PDF conversion and manipulation, hosted in France.
+ * PHP client for the conv2pdf API — PDF conversion and manipulation, hosted in the EU (France).
  *
  * Example:
  *   $c = new Conv2pdf('cpdf_live_...');
