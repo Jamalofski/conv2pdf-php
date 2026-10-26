@@ -115,6 +115,12 @@ $r = $c->convert('echo', [$pdf, ['path' => $pdf, 'name' => 'second.pdf'], $cf]);
 $seen = array_map(function (array $f): array { return [$f['field'], $f['name']]; }, $r['received']['files']);
 $check('merge: file[0], file[1], file[2], each under its name', $seen === [['file[0]', basename($pdf)], ['file[1]', 'second.pdf'], ['file[2]', 'facture.pdf']], $seen);
 
+// url-to-pdf takes no file: null sends the fields alone, still as multipart.
+$r = $c->convert('echo', null, ['url' => 'https://example.com/']);
+$check('no file: nothing sent as a file', $r['received']['files'] === [], $r['received']['files']);
+$check('no file: the url field', $r['received']['fields'] === ['url' => 'https://example.com/'], $r['received']['fields']);
+$check('no file: multipart body', strpos($r['received']['content_type'], 'multipart/form-data') === 0, $r['received']['content_type']);
+
 // 3. Errors: status, code, payload, Retry-After.
 $e = $refused('429 rate_limited', function () use ($c, $pdf): void { $c->convert('rate-limited', $pdf); });
 if ($e !== null) {

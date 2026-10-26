@@ -3,7 +3,7 @@
     "description": "Official PHP SDK for the conv2pdf API: PDF conversion and manipulation, hosted in the EU (France), GDPR-compliant, DPA provided.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["pdf", "conversion", "convert", "conv2pdf", "api", "sdk", "rgpd", "gdpr", "docx", "merge"],
+    "keywords": ["pdf", "conversion", "convert", "conv2pdf", "api", "sdk", "rgpd", "gdpr", "docx", "html", "merge"],
     "homepage": "https://conv2pdf.com/api/",
     "support": {
         "docs": "https://conv2pdf.com/api/documentation/",

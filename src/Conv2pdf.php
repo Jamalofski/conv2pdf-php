@@ -17,7 +17,7 @@ namespace Conv2pdf;
 final class Conv2pdf
 {
     /** SDK version. Sent on every request as `User-Agent: conv2pdf-php/<version> (PHP <version>)`. */
-    public const VERSION = '1.2.0';
+    public const VERSION = '1.3.0';
 
     /** Seconds allowed to establish the connection (TCP + TLS). */
     private const CONNECT_TIMEOUT = 10;
@@ -84,24 +84,33 @@ final class Conv2pdf
      * temp file, a stream dumped to disk — send it under a name that has one.
      *
      * @param string $tool Tool identifier (e.g. 'pdf-to-word', 'merge-pdf', 'compress-pdf').
-     * @param string|array<mixed>|\CURLFile|\CURLStringFile $files
-     *     One file, or a list of files (merge-pdf). A file is:
+     * @param string|array<mixed>|\CURLFile|\CURLStringFile|null $files
+     *     One file, a list of files (merge-pdf), or null for url-to-pdf, which takes no file
+     *     but the `url` field. A file is:
      *       - a path: 'report.pdf'
      *       - a path sent under another name: ['path' => '/tmp/php3Fx2', 'name' => 'export.csv']
      *       - a \CURLFile (its post name is sent as is)
      *       - a \CURLStringFile, for in-memory content (PHP 8.1+)
      * @param array<string, string|int> $fields Extra fields, depending on the tool, e.g. ['ranges' => '1-5'],
-     *                                          ['quality' => 'high'], ['password' => '...'], ['rotation' => 90].
+     *                                          ['quality' => 'high'], ['password' => '...'], ['rotation' => 90],
+     *                                          ['url' => 'https://example.com/'].
      * @return array{job_id: string, status: string, download_url: string, size_bytes: int, quota?: array<string, mixed>}
      * @throws Conv2pdfException On an API error (4xx/5xx) or a network error.
-     * @throws \InvalidArgumentException If no file is given, or a path does not exist.
+     * @throws \InvalidArgumentException If the list of files is empty, or a path does not exist.
      */
     public function convert(string $tool, $files, array $fields = []): array
     {
         // A list is an array without a 'path' key: ['a.pdf', 'b.pdf'] or [['path' => …], …].
-        $entries = is_array($files) && !array_key_exists('path', $files) ? array_values($files) : [$files];
-        if ($entries === []) {
-            throw new \InvalidArgumentException('At least one file is required.');
+        // null sends no file at all, for url-to-pdf. The API judges the rest: 400
+        // not_enough_files for a tool that needs a file, no_file_expected for a file sent
+        // to url-to-pdf.
+        if ($files === null) {
+            $entries = [];
+        } else {
+            $entries = is_array($files) && !array_key_exists('path', $files) ? array_values($files) : [$files];
+            if ($entries === []) {
+                throw new \InvalidArgumentException('At least one file is required; pass null for url-to-pdf, which takes none.');
+            }
         }
 
         $post = [];

@@ -1,6 +1,6 @@
 # conv2pdf/php
 
-Official PHP SDK for the [conv2pdf API](https://conv2pdf.com/api/): PDF conversion and manipulation (15 tools), **hosted in the EU (France)**, GDPR-compliant, DPA provided. A thin wrapper with **zero dependencies** (`ext-curl` only).
+Official PHP SDK for the [conv2pdf API](https://conv2pdf.com/api/): PDF conversion and manipulation (19 tools), **hosted in the EU (France)**, GDPR-compliant, DPA provided. A thin wrapper with **zero dependencies** (`ext-curl` only).
 
 ## Installation
 
@@ -21,7 +21,7 @@ $job = $c->convert('pdf-to-word', 'report.pdf');
 $c->download($job['download_url'], 'report.docx');
 ```
 
-Every tool works the same way, an e-book included: `$c->convert('epub-to-pdf', 'book.epub')`.
+Every tool works the same way, an e-book or a PostScript file included: `$c->convert('epub-to-pdf', 'book.epub')`, `$c->convert('ps-to-pdf', 'drawing.eps')`. A web page is the one exception: it comes from an address, not a file (see [Web pages](#web-pages)).
 
 ## Usage
 
@@ -29,13 +29,14 @@ Every tool works the same way, an e-book included: `$c->convert('epub-to-pdf', '
 
 ```php
 $c->convert('compress-pdf', 'large.pdf', ['quality' => 'high']);      // low | medium | high
-$c->convert('split-pdf',    'doc.pdf',   ['ranges' => '1-5,7,10-12']);
+$c->convert('extract-pages','doc.pdf',   ['ranges' => '10-12,1']);     // one PDF, pages in the order written
+$c->convert('split-pdf',    'doc.pdf');                                // one PDF per page, in a ZIP file
 $c->convert('rotate-pdf',   'doc.pdf',   ['rotation' => 90]);          // 90 | 180 | 270
 $c->convert('watermark-pdf','doc.pdf',   ['text' => 'CONFIDENTIAL']);
 $c->convert('protect-pdf',  'doc.pdf',   ['password' => 'secret', 'prevent_print' => 'on']);
 ```
 
-A PDF that asks for a password to open goes through the same `password` field, on `pdf-to-word`, `pdf-to-image`, `compress-pdf`, `split-pdf`, `rotate-pdf`, `watermark-pdf` and `page-numbers-pdf`. The result has no password:
+A PDF that asks for a password to open goes through the same `password` field, on `pdf-to-word`, `pdf-to-image`, `compress-pdf`, `extract-pages`, `split-pdf`, `rotate-pdf`, `watermark-pdf` and `page-numbers-pdf`. The result has no password:
 
 ```php
 $c->convert('compress-pdf', 'statement.pdf', ['password' => 'its-password']);
@@ -47,6 +48,17 @@ $c->convert('compress-pdf', 'statement.pdf', ['password' => 'its-password']);
 $job = $c->convert('merge-pdf', ['a.pdf', 'b.pdf', 'c.pdf']);
 $c->download($job['download_url'], 'merged.pdf');
 ```
+
+### Web pages
+
+`url-to-pdf` takes no file but the address of a public page, in the `url` field; `html-to-pdf` takes an HTML file. Both print the page as a browser would, with selectable text and working links:
+
+```php
+$job = $c->convert('url-to-pdf', null, ['url' => 'https://example.com/pricing']);
+$job = $c->convert('html-to-pdf', 'invoice.html');
+```
+
+The page is opened without a session, so nothing behind a login is reachable. An address with credentials, on a private network or a local name is refused with `invalid_url`, the reason in the payload's `cause`.
 
 ### Plan limits
 
@@ -113,6 +125,7 @@ Match on `getErrorCode()` rather than on the message: error codes are part of th
 
 | Status | Code | In the payload |
 |---|---|---|
+| 400 | `invalid_page_range` | `cause` (`syntax`, `page_zero`, `beyond_last_page`, `whole_document`), `range`, and `total_pages` once the PDF is open |
 | 402 | `plan_limit_files` | `max_allowed` |
 | 409 | `job_not_ready` | `status`: `pending`, `failed` or `rejected` |
 | 410 | `file_expired`, `job_deleted` | Gone for good, do not retry |
@@ -120,6 +133,7 @@ Match on `getErrorCode()` rather than on the message: error codes are part of th
 | 415 | `unsupported_content` | `detected_type`: what the file really is |
 | 415 | `unsupported_media_type` | `received`, `accepted`: the request was not `multipart/form-data` |
 | 422 | `empty_file`, `password_protected`, `pdf_scanned_needs_ocr`, `pdf_too_many_pages`, … | A verdict on the file itself |
+| 422 | `invalid_url`, `url_unreachable`, `url_http_error`, `url_blank_page` | A verdict on the address (`url-to-pdf`): `cause` on `invalid_url`, the page's `http_status` on `url_http_error` |
 | 429 | `rate_limited` | `retry_after`, `limit`: 20 conversions per minute per key; `getRetryAfter()` is set |
 | 429 | `quota_exceeded` | `quota`, `used`, `quota_period_end` (next reset, millisecond timestamp) — **`null` on the free Dev trial**, which never renews, along with `period_end`; read `upgrade` instead; not transient |
 | 503 | `server_busy` | Queue saturated; `getRetryAfter()` is set |
